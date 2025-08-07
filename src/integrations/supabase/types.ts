@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          date: string
+          description: string
+          id: string
+          trip_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          currency?: string | null
+          date: string
+          description: string
+          id?: string
+          trip_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          currency?: string | null
+          date?: string
+          description?: string
+          id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          ai_generated_plan: string | null
+          budget_range: string | null
+          created_at: string | null
+          current_location: string
+          destination: string
+          end_date: string
+          id: string
+          interests: string | null
+          number_of_people: number | null
+          start_date: string
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_generated_plan?: string | null
+          budget_range?: string | null
+          created_at?: string | null
+          current_location: string
+          destination: string
+          end_date: string
+          id?: string
+          interests?: string | null
+          number_of_people?: number | null
+          start_date: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_generated_plan?: string | null
+          budget_range?: string | null
+          created_at?: string | null
+          current_location?: string
+          destination?: string
+          end_date?: string
+          id?: string
+          interests?: string | null
+          number_of_people?: number | null
+          start_date?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
