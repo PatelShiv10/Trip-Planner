@@ -12,6 +12,9 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NewTrip from "./pages/NewTrip";
+import TripDetail from "./pages/TripDetail";
+import EditTrip from "./pages/EditTrip";
+import TripExpenses from "./pages/TripExpenses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +38,21 @@ const App = () => (
               <Route path="trip/new" element={
                 <ProtectedRoute>
                   <NewTrip />
+                </ProtectedRoute>
+              } />
+              <Route path="trip/:id" element={
+                <ProtectedRoute>
+                  <TripDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="trip/:id/edit" element={
+                <ProtectedRoute>
+                  <EditTrip />
+                </ProtectedRoute>
+              } />
+              <Route path="trip/:id/expenses" element={
+                <ProtectedRoute>
+                  <TripExpenses />
                 </ProtectedRoute>
               } />
             </Route>
