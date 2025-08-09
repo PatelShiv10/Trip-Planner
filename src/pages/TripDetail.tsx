@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { TripPlanDisplay } from '@/components/TripPlanDisplay';
+import { usePDFGeneration } from '@/hooks/usePDFGeneration';
 import { 
   MapPin, 
   Calendar, 
@@ -17,7 +18,8 @@ import {
   ArrowLeft,
   Sparkles,
   Plus,
-  Receipt
+  Receipt,
+  Download
 } from 'lucide-react';
 
 interface Trip {
@@ -49,10 +51,12 @@ const TripDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { generatePDF } = usePDFGeneration();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [parsedPlan, setParsedPlan] = useState<any>(null);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -70,6 +74,29 @@ const TripDetail = () => {
 
       if (tripError) throw tripError;
       setTrip(tripData);
+
+      // Parse AI plan if it exists
+      if (tripData.ai_generated_plan) {
+        try {
+          const plan = typeof tripData.ai_generated_plan === 'string' 
+            ? JSON.parse(tripData.ai_generated_plan) 
+            : tripData.ai_generated_plan;
+          setParsedPlan(plan);
+        } catch (parseError) {
+          // If parsing fails, treat as plain text
+          setParsedPlan({
+            summary: `Trip to ${tripData.destination}`,
+            plainText: tripData.ai_generated_plan,
+            dailyItinerary: [],
+            budgetBreakdown: {},
+            transportation: { gettingThere: "", localTransport: "" },
+            accommodation: "",
+            foodRecommendations: [],
+            travelTips: [],
+            hiddenGems: []
+          });
+        }
+      }
 
       // Fetch trip expenses
       const { data: expenseData, error: expenseError } = await supabase
@@ -114,15 +141,18 @@ const TripDetail = () => {
 
       if (error) throw error;
 
+      const planToStore = typeof data.plan === 'object' ? JSON.stringify(data.plan) : data.plan;
+
       // Update trip with generated plan
       const { error: updateError } = await supabase
         .from('trips')
-        .update({ ai_generated_plan: data.plan })
+        .update({ ai_generated_plan: planToStore })
         .eq('id', id);
 
       if (updateError) throw updateError;
 
-      setTrip(prev => prev ? { ...prev, ai_generated_plan: data.plan } : null);
+      setTrip(prev => prev ? { ...prev, ai_generated_plan: planToStore } : null);
+      setParsedPlan(data.plan);
       
       toast({
         title: "Success!",
@@ -138,6 +168,26 @@ const TripDetail = () => {
     } finally {
       setGeneratingPlan(false);
     }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!trip || !parsedPlan) {
+      toast({
+        title: "No Plan Available",
+        description: "Please generate a trip plan first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await generatePDF({
+      title: trip.title,
+      destination: trip.destination,
+      start_date: trip.start_date,
+      end_date: trip.end_date,
+      number_of_people: trip.number_of_people,
+      budget_range: trip.budget_range
+    });
   };
 
   const deleteTrip = async () => {
@@ -214,6 +264,12 @@ const TripDetail = () => {
           </div>
         </div>
         <div className="flex space-x-2">
+          {parsedPlan && (
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
           <Link to={`/trip/${id}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="h-4 w-4 mr-2" />
@@ -282,31 +338,50 @@ const TripDetail = () => {
                 <Sparkles className="h-5 w-5 text-purple-600" />
                 <span>AI Trip Plan</span>
               </CardTitle>
-              <Button 
-                onClick={generateAIPlan} 
-                disabled={generatingPlan}
-                size="sm"
-              >
-                {generatingPlan ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    {trip.ai_generated_plan ? 'Regenerate Plan' : 'Generate Plan'}
-                  </>
+              <div className="flex space-x-2">
+                {parsedPlan && (
+                  <Button 
+                    onClick={handleDownloadPDF} 
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
                 )}
-              </Button>
+                <Button 
+                  onClick={generateAIPlan} 
+                  disabled={generatingPlan}
+                  size="sm"
+                >
+                  {generatingPlan ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {parsedPlan ? 'Regenerate Plan' : 'Generate Plan'}
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {trip.ai_generated_plan ? (
-                <div className="prose max-w-none">
-                  <div className="whitespace-pre-wrap text-gray-700">
-                    {trip.ai_generated_plan}
-                  </div>
-                </div>
+              {parsedPlan ? (
+                <TripPlanDisplay 
+                  plan={parsedPlan} 
+                  expenses={expenses}
+                  tripDetails={{
+                    title: trip.title,
+                    destination: trip.destination,
+                    start_date: trip.start_date,
+                    end_date: trip.end_date,
+                    number_of_people: trip.number_of_people,
+                    budget_range: trip.budget_range
+                  }}
+                />
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Sparkles className="h-12 w-12 mx-auto mb-4 text-gray-300" />

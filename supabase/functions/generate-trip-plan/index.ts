@@ -39,18 +39,61 @@ Trip Details:
 - Budget range: ${trip.budget_range}
 - Interests: ${trip.interests || 'General sightseeing'}
 
-Please create a comprehensive itinerary that includes:
+Please return your response as a structured JSON object with the following format:
+{
+  "summary": "Brief overview of the trip",
+  "dailyItinerary": [
+    {
+      "day": 1,
+      "date": "YYYY-MM-DD",
+      "title": "Day title",
+      "activities": [
+        {
+          "time": "Morning/Afternoon/Evening",
+          "activity": "Activity description",
+          "location": "Location name",
+          "estimatedCost": 50,
+          "category": "Activities" // Use: Accommodation, Food, Transportation, Activities, Shopping, Entertainment, Other
+        }
+      ]
+    }
+  ],
+  "budgetBreakdown": {
+    "Accommodation": { "estimated": 500, "notes": "Per person for ${durationDays} days" },
+    "Food": { "estimated": 300, "notes": "Local dining and meals" },
+    "Transportation": { "estimated": 200, "notes": "Local transport and flights" },
+    "Activities": { "estimated": 400, "notes": "Tours and attractions" },
+    "Shopping": { "estimated": 150, "notes": "Souvenirs and personal items" },
+    "Entertainment": { "estimated": 100, "notes": "Nightlife and shows" },
+    "Other": { "estimated": 100, "notes": "Miscellaneous expenses" }
+  },
+  "transportation": {
+    "gettingThere": "How to reach the destination",
+    "localTransport": "Local transportation options and tips"
+  },
+  "accommodation": "Accommodation recommendations within budget",
+  "foodRecommendations": [
+    {
+      "name": "Restaurant/Dish name",
+      "type": "Local specialty/Restaurant type",
+      "description": "Why it's recommended",
+      "estimatedCost": 25
+    }
+  ],
+  "travelTips": [
+    "Practical tip 1",
+    "Practical tip 2"
+  ],
+  "hiddenGems": [
+    {
+      "name": "Hidden gem name",
+      "description": "What makes it special",
+      "location": "Where to find it"
+    }
+  ]
+}
 
-1. **Day-by-Day Schedule**: Break down each day with morning, afternoon, and evening activities
-2. **Transportation**: How to get there and move around locally
-3. **Accommodation**: Suggest types of places to stay within the budget
-4. **Must-See Attractions**: Top destinations and experiences
-5. **Local Food**: Restaurant recommendations and local dishes to try
-6. **Budget Breakdown**: Estimated costs for major categories
-7. **Travel Tips**: Local customs, weather considerations, and practical advice
-8. **Hidden Gems**: Lesser-known spots that locals recommend
-
-Format the response in a clear, organized manner with headers and bullet points for easy reading. Make it practical and actionable for travelers.`;
+Make sure all cost estimates are realistic and align with the specified budget range. Provide practical, actionable advice that travelers can actually use.`;
 
     console.log('Generating trip plan for:', trip.destination);
 
@@ -69,7 +112,7 @@ Format the response in a clear, organized manner with headers and bullet points 
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
         }
       }),
     });
@@ -86,12 +129,42 @@ Format the response in a clear, organized manner with headers and bullet points 
       throw new Error('Invalid response from Gemini API');
     }
     
-    const generatedPlan = data.candidates[0].content.parts[0].text;
+    let generatedPlan = data.candidates[0].content.parts[0].text;
+    
+    // Try to parse as JSON, fallback to plain text if parsing fails
+    let structuredPlan;
+    try {
+      // Clean up the response to extract JSON
+      const jsonMatch = generatedPlan.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       generatedPlan.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const jsonStr = jsonMatch[1] || jsonMatch[0];
+        structuredPlan = JSON.parse(jsonStr);
+      } else {
+        // Try to parse the entire response as JSON
+        structuredPlan = JSON.parse(generatedPlan);
+      }
+    } catch (parseError) {
+      console.log('Failed to parse as JSON, using fallback structure:', parseError);
+      // Fallback to a basic structure with the original text
+      structuredPlan = {
+        summary: `${durationDays}-day trip to ${trip.destination}`,
+        plainText: generatedPlan,
+        dailyItinerary: [],
+        budgetBreakdown: {},
+        transportation: { gettingThere: "", localTransport: "" },
+        accommodation: "",
+        foodRecommendations: [],
+        travelTips: [],
+        hiddenGems: []
+      };
+    }
 
     console.log('Trip plan generated successfully');
 
     return new Response(JSON.stringify({ 
-      plan: generatedPlan,
+      plan: structuredPlan,
       success: true 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
