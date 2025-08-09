@@ -1,21 +1,19 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Plane, LogOut, User, MapPin, Plus } from 'lucide-react';
 import { useNavigate, Link, Outlet } from 'react-router-dom';
-
 const Layout = () => {
-  const { user, signOut } = useAuth();
+  const {
+    user,
+    signOut
+  } = useAuth();
   const navigate = useNavigate();
-
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
+  return <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
       <nav className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -23,13 +21,10 @@ const Layout = () => {
               <div className="p-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl group-hover:scale-105 transition-transform duration-200">
                 <Plane className="h-6 w-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
-                Triply
-              </span>
+              <span className="text-xl font-bold text-gray-900">AI Trip Planner</span>
             </Link>
 
-            {user && (
-              <div className="flex items-center space-x-4">
+            {user && <div className="flex items-center space-x-4">
                 <Link to="/trip/new">
                   <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 rounded-xl">
                     <Plus className="h-4 w-4 mr-2" />
@@ -53,16 +48,10 @@ const Layout = () => {
                   </span>
                 </div>
                 
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleSignOut}
-                  className="hover:bg-red-50 hover:text-red-600 transition-colors duration-200 rounded-xl"
-                >
+                <Button variant="ghost" size="sm" onClick={handleSignOut} className="hover:bg-red-50 hover:text-red-600 transition-colors duration-200 rounded-xl">
                   <LogOut className="h-4 w-4" />
                 </Button>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </nav>
@@ -70,8 +59,6 @@ const Layout = () => {
       <main>
         <Outlet />
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Layout;
