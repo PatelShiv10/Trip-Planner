@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 
@@ -33,6 +33,9 @@ const EditTrip = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Trip>>({});
+  const [budgetType, setBudgetType] = useState<'preset' | 'custom'>('preset');
+  const [customBudgetMin, setCustomBudgetMin] = useState('');
+  const [customBudgetMax, setCustomBudgetMax] = useState('');
 
   useEffect(() => {
     if (!id || !user) return;
@@ -60,6 +63,16 @@ const EditTrip = () => {
         interests: data.interests,
         status: data.status
       });
+
+      // Check if it's a custom budget
+      if (data.budget_range && !['budget', 'mid-range', 'luxury'].includes(data.budget_range)) {
+        setBudgetType('custom');
+        const match = data.budget_range.match(/₹(\d+(?:,\d+)*)-₹(\d+(?:,\d+)*)/);
+        if (match) {
+          setCustomBudgetMin(match[1].replace(/,/g, ''));
+          setCustomBudgetMax(match[2].replace(/,/g, ''));
+        }
+      }
     } catch (error) {
       console.error('Error fetching trip:', error);
       toast({
@@ -77,6 +90,23 @@ const EditTrip = () => {
     e.preventDefault();
     if (!id) return;
 
+    let finalBudgetRange = formData.budget_range;
+    
+    // Handle custom budget
+    if (budgetType === 'custom' && customBudgetMin && customBudgetMax) {
+      const min = parseInt(customBudgetMin);
+      const max = parseInt(customBudgetMax);
+      if (min >= max) {
+        toast({
+          title: "Error",
+          description: "Maximum budget must be greater than minimum budget",
+          variant: "destructive"
+        });
+        return;
+      }
+      finalBudgetRange = `₹${min.toLocaleString('en-IN')}-₹${max.toLocaleString('en-IN')}`;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -88,7 +118,7 @@ const EditTrip = () => {
           start_date: formData.start_date,
           end_date: formData.end_date,
           number_of_people: formData.number_of_people,
-          budget_range: formData.budget_range,
+          budget_range: finalBudgetRange,
           interests: formData.interests,
           status: formData.status,
           updated_at: new Date().toISOString()
@@ -212,33 +242,66 @@ const EditTrip = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="budget_range">Budget Range</Label>
-                <Select
-                  value={formData.budget_range || ''}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, budget_range: value }))}
+                <Label>Budget Range</Label>
+                <RadioGroup
+                  value={budgetType}
+                  onValueChange={(value) => setBudgetType(value as 'preset' | 'custom')}
+                  className="mb-3"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select budget range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="budget">Budget ($0-500)</SelectItem>
-                    <SelectItem value="mid-range">Mid-range ($500-1500)</SelectItem>
-                    <SelectItem value="luxury">Luxury ($1500+)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="preset" id="preset-edit" />
+                    <Label htmlFor="preset-edit">Preset Budgets</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="custom" id="custom-edit" />
+                    <Label htmlFor="custom-edit">Custom Budget</Label>
+                  </div>
+                </RadioGroup>
+
+                {budgetType === 'preset' ? (
+                  <Select
+                    value={formData.budget_range || ''}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, budget_range: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select budget range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="budget">Budget (₹25,000-₹75,000)</SelectItem>
+                      <SelectItem value="mid-range">Mid-range (₹75,000-₹2,00,000)</SelectItem>
+                      <SelectItem value="luxury">Luxury (₹2,00,000+)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Min budget (₹)"
+                      value={customBudgetMin}
+                      onChange={(e) => setCustomBudgetMin(e.target.value)}
+                      required={budgetType === 'custom'}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max budget (₹)"
+                      value={customBudgetMax}
+                      onChange={(e) => setCustomBudgetMax(e.target.value)}
+                      required={budgetType === 'custom'}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="status">Trip Status</Label>
                 <Select
-                  value={formData.status || 'draft'}
+                  value={formData.status || 'planned'}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="planned">Planned</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>

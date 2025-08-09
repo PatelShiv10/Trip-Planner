@@ -19,8 +19,11 @@ import {
   Sparkles,
   Plus,
   Receipt,
-  Download
+  Download,
+  MessageCircle
 } from 'lucide-react';
+import { TripPlanChat } from '@/components/TripPlanChat';
+import { formatINR } from '@/lib/currency';
 
 interface Trip {
   id: string;
@@ -57,6 +60,7 @@ const TripDetail = () => {
   const [loading, setLoading] = useState(true);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [parsedPlan, setParsedPlan] = useState<any>(null);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -170,6 +174,63 @@ const TripDetail = () => {
     }
   };
 
+  const handlePlanUpdate = (updatedPlan: any) => {
+    setParsedPlan(updatedPlan);
+    setTrip(prev => prev ? { ...prev, ai_generated_plan: JSON.stringify(updatedPlan) } : null);
+  };
+
+  const markAsCompleted = async () => {
+    if (!trip || !confirm('Mark this trip as completed?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTrip(prev => prev ? { ...prev, status: 'completed' } : null);
+      toast({
+        title: "Trip completed!",
+        description: "Your trip has been marked as completed"
+      });
+    } catch (error) {
+      console.error('Error updating trip status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update trip status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const markAsActive = async () => {
+    if (!trip) return;
+
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'active' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTrip(prev => prev ? { ...prev, status: 'active' } : null);
+      toast({
+        title: "Trip activated!",
+        description: "Your trip has been marked as active"
+      });
+    } catch (error) {
+      console.error('Error updating trip status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update trip status",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!trip || !parsedPlan) {
       toast({
@@ -270,6 +331,16 @@ const TripDetail = () => {
               Download PDF
             </Button>
           )}
+          {trip?.status === 'planned' && (
+            <Button variant="outline" size="sm" onClick={markAsActive}>
+              Start Trip
+            </Button>
+          )}
+          {trip?.status === 'active' && (
+            <Button variant="outline" size="sm" onClick={markAsCompleted}>
+              Mark Complete
+            </Button>
+          )}
           <Link to={`/trip/${id}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="h-4 w-4 mr-2" />
@@ -340,14 +411,24 @@ const TripDetail = () => {
               </CardTitle>
               <div className="flex space-x-2">
                 {parsedPlan && (
-                  <Button 
-                    onClick={handleDownloadPDF} 
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
+                  <>
+                    <Button 
+                      onClick={() => setShowChat(!showChat)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {showChat ? 'Hide Chat' : 'Modify Plan'}
+                    </Button>
+                    <Button 
+                      onClick={handleDownloadPDF} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                  </>
                 )}
                 <Button 
                   onClick={generateAIPlan} 
@@ -370,18 +451,29 @@ const TripDetail = () => {
             </CardHeader>
             <CardContent>
               {parsedPlan ? (
-                <TripPlanDisplay 
-                  plan={parsedPlan} 
-                  expenses={expenses}
-                  tripDetails={{
-                    title: trip.title,
-                    destination: trip.destination,
-                    start_date: trip.start_date,
-                    end_date: trip.end_date,
-                    number_of_people: trip.number_of_people,
-                    budget_range: trip.budget_range
-                  }}
-                />
+                <>
+                  {showChat && (
+                    <div className="mb-6">
+                      <TripPlanChat 
+                        tripId={id!}
+                        currentPlan={parsedPlan}
+                        onPlanUpdate={handlePlanUpdate}
+                      />
+                    </div>
+                  )}
+                  <TripPlanDisplay 
+                    plan={parsedPlan} 
+                    expenses={expenses}
+                    tripDetails={{
+                      title: trip.title,
+                      destination: trip.destination,
+                      start_date: trip.start_date,
+                      end_date: trip.end_date,
+                      number_of_people: trip.number_of_people,
+                      budget_range: trip.budget_range
+                    }}
+                  />
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Sparkles className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -412,7 +504,7 @@ const TripDetail = () => {
             <CardContent>
               <div className="text-center mb-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  ${totalExpenses.toFixed(2)}
+                  {formatINR(totalExpenses)}
                 </div>
                 <p className="text-sm text-gray-600">Total Spent</p>
               </div>
@@ -426,7 +518,7 @@ const TripDetail = () => {
                         <p className="text-xs text-gray-600">{expense.category}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">${expense.amount.toFixed(2)}</p>
+                        <p className="font-medium">{formatINR(expense.amount)}</p>
                         <p className="text-xs text-gray-600">{new Date(expense.date).toLocaleDateString()}</p>
                       </div>
                     </div>

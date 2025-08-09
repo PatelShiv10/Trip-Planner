@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +12,7 @@ import {
   Star,
   Clock
 } from 'lucide-react';
+import { formatINR, convertToINR } from '@/lib/currency';
 
 interface Activity {
   time: string;
@@ -115,7 +115,18 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
     );
   }
 
-  const totalEstimated = Object.values(plan.budgetBreakdown).reduce((sum, item) => sum + item.estimated, 0);
+  // Convert estimated budget to INR if needed
+  const convertedBudgetBreakdown = Object.entries(plan.budgetBreakdown).reduce((acc, [category, budget]) => {
+    // Assume the plan already has INR values, but if not, convert from USD
+    const estimatedAmount = typeof budget.estimated === 'number' ? budget.estimated : 0;
+    acc[category] = {
+      ...budget,
+      estimated: estimatedAmount < 10000 ? convertToINR(estimatedAmount) : estimatedAmount
+    };
+    return acc;
+  }, {} as Record<string, any>);
+
+  const totalEstimated = Object.values(convertedBudgetBreakdown).reduce((sum, item) => sum + item.estimated, 0);
   const totalActual = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   const expensesByCategory = expenses.reduce((acc, expense) => {
@@ -173,7 +184,9 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                           </div>
                           <div className="flex items-center space-x-2">
                             <Badge variant="secondary">{activity.category}</Badge>
-                            <span className="text-sm font-medium">${activity.estimatedCost}</span>
+                            <span className="text-sm font-medium">
+                              {formatINR(activity.estimatedCost < 1000 ? convertToINR(activity.estimatedCost) : activity.estimatedCost)}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -187,7 +200,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
       )}
 
       {/* Budget Breakdown */}
-      {Object.keys(plan.budgetBreakdown).length > 0 && (
+      {Object.keys(convertedBudgetBreakdown).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -199,16 +212,16 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-medium text-blue-900">Estimated Total</h4>
-                <p className="text-2xl font-bold text-blue-700">${totalEstimated.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-700">{formatINR(totalEstimated)}</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
                 <h4 className="font-medium text-green-900">Actual Spent</h4>
-                <p className="text-2xl font-bold text-green-700">${totalActual.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-700">{formatINR(totalActual)}</p>
               </div>
             </div>
             
             <div className="space-y-3">
-              {Object.entries(plan.budgetBreakdown).map(([category, budget]) => {
+              {Object.entries(convertedBudgetBreakdown).map(([category, budget]) => {
                 const Icon = categoryIcons[category as keyof typeof categoryIcons] || DollarSign;
                 const actualSpent = expensesByCategory[category] || 0;
                 const percentage = budget.estimated > 0 ? (actualSpent / budget.estimated) * 100 : 0;
@@ -221,8 +234,8 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                         <span className="font-medium">{category}</span>
                       </div>
                       <div className="text-right text-sm">
-                        <div>Estimated: <span className="font-medium">${budget.estimated}</span></div>
-                        <div>Actual: <span className="font-medium">${actualSpent.toFixed(2)}</span></div>
+                        <div>Estimated: <span className="font-medium">{formatINR(budget.estimated)}</span></div>
+                        <div>Actual: <span className="font-medium">{formatINR(actualSpent)}</span></div>
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{budget.notes}</p>
@@ -301,7 +314,9 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                 <div key={idx} className="p-3 border rounded-lg">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium">{food.name}</h4>
-                    <span className="text-sm font-medium">${food.estimatedCost}</span>
+                    <span className="text-sm font-medium">
+                      {formatINR(food.estimatedCost < 500 ? convertToINR(food.estimatedCost) : food.estimatedCost)}
+                    </span>
                   </div>
                   <Badge variant="outline" className="mb-2">{food.type}</Badge>
                   <p className="text-sm text-gray-600">{food.description}</p>

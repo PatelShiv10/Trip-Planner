@@ -9,12 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { formatINR } from '@/lib/currency';
 
 const NewTrip = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [budgetType, setBudgetType] = useState<'preset' | 'custom'>('preset');
+  const [customBudgetMin, setCustomBudgetMin] = useState('');
+  const [customBudgetMax, setCustomBudgetMax] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     destination: '',
@@ -33,6 +38,20 @@ const NewTrip = () => {
     setLoading(true);
 
     try {
+      let finalBudgetRange = formData.budgetRange;
+      
+      // Handle custom budget
+      if (budgetType === 'custom' && customBudgetMin && customBudgetMax) {
+        const min = parseInt(customBudgetMin);
+        const max = parseInt(customBudgetMax);
+        if (min >= max) {
+          toast.error('Maximum budget must be greater than minimum budget');
+          setLoading(false);
+          return;
+        }
+        finalBudgetRange = `₹${min.toLocaleString('en-IN')}-₹${max.toLocaleString('en-IN')}`;
+      }
+
       const { data, error } = await supabase
         .from('trips')
         .insert({
@@ -43,9 +62,9 @@ const NewTrip = () => {
           start_date: formData.startDate,
           end_date: formData.endDate,
           number_of_people: parseInt(formData.numberOfPeople),
-          budget_range: formData.budgetRange,
+          budget_range: finalBudgetRange,
           interests: formData.interests,
-          status: 'draft'
+          status: 'planned'
         })
         .select()
         .single();
@@ -107,7 +126,7 @@ const NewTrip = () => {
                 id="currentLocation"
                 value={formData.currentLocation}
                 onChange={(e) => handleInputChange('currentLocation', e.target.value)}
-                placeholder="e.g., New York, USA"
+                placeholder="e.g., Mumbai, India"
                 required
               />
             </div>
@@ -152,17 +171,51 @@ const NewTrip = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="budgetRange">Budget Range</Label>
-                <Select value={formData.budgetRange} onValueChange={(value) => handleInputChange('budgetRange', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select budget range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="budget">Budget ($500-$1500)</SelectItem>
-                    <SelectItem value="mid-range">Mid-range ($1500-$3000)</SelectItem>
-                    <SelectItem value="luxury">Luxury ($3000+)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Budget Range</Label>
+                <RadioGroup
+                  value={budgetType}
+                  onValueChange={(value) => setBudgetType(value as 'preset' | 'custom')}
+                  className="mb-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="preset" id="preset" />
+                    <Label htmlFor="preset">Preset Budgets</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="custom" id="custom" />
+                    <Label htmlFor="custom">Custom Budget</Label>
+                  </div>
+                </RadioGroup>
+
+                {budgetType === 'preset' ? (
+                  <Select value={formData.budgetRange} onValueChange={(value) => handleInputChange('budgetRange', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select budget range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="budget">Budget ({formatINR(25000)}-{formatINR(75000)})</SelectItem>
+                      <SelectItem value="mid-range">Mid-range ({formatINR(75000)}-{formatINR(200000)})</SelectItem>
+                      <SelectItem value="luxury">Luxury ({formatINR(200000)}+)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Min budget (₹)"
+                      value={customBudgetMin}
+                      onChange={(e) => setCustomBudgetMin(e.target.value)}
+                      required={budgetType === 'custom'}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max budget (₹)"
+                      value={customBudgetMax}
+                      onChange={(e) => setCustomBudgetMax(e.target.value)}
+                      required={budgetType === 'custom'}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
