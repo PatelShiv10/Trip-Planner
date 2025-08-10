@@ -95,120 +95,117 @@ serve(async (req) => {
     console.log(`Budget range: ₹${minBudget.toLocaleString()} - ₹${maxBudget.toLocaleString()}`);
     console.log(`Target budget: ₹${targetBudget.toLocaleString()}`);
 
-    const prompt = `You are an expert travel planner with deep knowledge of current pricing. Create a detailed ${daysDiff}-day trip plan that STRICTLY stays within the budget of ₹${minBudget.toLocaleString()} to ₹${maxBudget.toLocaleString()}.
+    const prompt = `You are an expert budget travel planner with deep knowledge of current realistic pricing in ${trip.destination}. Create a detailed ${daysDiff}-day trip plan that MUST stay within the STRICT budget of ₹${minBudget.toLocaleString()} to ₹${maxBudget.toLocaleString()}.
 
 Trip Details:
 - Destination: ${trip.destination}
 - Starting from: ${trip.current_location}
 - Duration: ${trip.start_date} to ${trip.end_date} (${daysDiff} days)
 - Number of people: ${trip.number_of_people}
-- STRICT Budget: ₹${minBudget.toLocaleString()} - ₹${maxBudget.toLocaleString()}
+- ABSOLUTE MAXIMUM BUDGET: ₹${maxBudget.toLocaleString()}
 - Target Budget: ₹${targetBudget.toLocaleString()}
 - Interests: ${trip.interests || 'General sightseeing'}
 
-CRITICAL BUDGET REQUIREMENTS:
-- The TOTAL cost must NOT exceed ₹${maxBudget.toLocaleString()}
-- Research current realistic prices for ${trip.destination}
-- Adjust all recommendations to fit within the specified budget
-- If luxury options don't fit the budget, suggest budget-friendly alternatives
-- The sum of all estimated costs must be within the budget range
+CRITICAL BUDGET REQUIREMENTS - THIS IS MANDATORY:
+- The TOTAL cost MUST NOT exceed ₹${maxBudget.toLocaleString()} under ANY circumstances
+- Research and use REALISTIC current budget prices for ${trip.destination}
+- If you cannot fit activities within the budget, choose FREE or very low-cost alternatives
+- Prioritize budget accommodations (hostels, budget hotels, shared rooms)
+- Use public transport, walking, or cheapest transport options
+- Focus on street food, local eateries, and cooking if possible
+- Choose free attractions, parks, beaches, markets over expensive tourist spots
+- The sum of accommodation + transport + food + activities + misc MUST be ≤ ₹${maxBudget.toLocaleString()}
 
-MANDATORY: You MUST provide a complete daily itinerary for all ${daysDiff} days. Each day must have specific activities, timings, and locations.
+BUDGET ALLOCATION GUIDELINES for ₹${targetBudget.toLocaleString()}:
+- Accommodation: Maximum 40% (₹${Math.floor(targetBudget * 0.4).toLocaleString()})
+- Transportation: Maximum 25% (₹${Math.floor(targetBudget * 0.25).toLocaleString()})
+- Food: Maximum 20% (₹${Math.floor(targetBudget * 0.2).toLocaleString()})
+- Activities: Maximum 10% (₹${Math.floor(targetBudget * 0.1).toLocaleString()})
+- Miscellaneous: Maximum 5% (₹${Math.floor(targetBudget * 0.05).toLocaleString()})
 
-Please provide a structured JSON response with the following EXACT format:
+MANDATORY: Generate activities for ALL ${daysDiff} days with realistic budget pricing.
+
+Please provide a structured JSON response with this EXACT format:
 {
-  "summary": "Brief trip overview emphasizing budget-conscious choices",
+  "summary": "Brief overview emphasizing how this plan stays within ₹${minBudget.toLocaleString()}-₹${maxBudget.toLocaleString()} budget",
   "dailyItinerary": [
     {
       "day": 1,
       "date": "${trip.start_date}",
-      "title": "Day 1 title",
+      "title": "Day 1 title with budget focus",
       "activities": [
         {
           "time": "Morning",
-          "activity": "Activity description",
-          "location": "Specific location name",
-          "estimatedCost": 500,
-          "category": "Sightseeing"
-        },
-        {
-          "time": "Afternoon",
-          "activity": "Activity description",
-          "location": "Specific location name",
-          "estimatedCost": 300,
-          "category": "Food"
-        },
-        {
-          "time": "Evening",
-          "activity": "Activity description",
-          "location": "Specific location name",
+          "activity": "Specific budget-friendly activity",
+          "location": "Exact location name",
           "estimatedCost": 200,
-          "category": "Entertainment"
+          "category": "Sightseeing",
+          "budgetNote": "Why this fits the budget"
         }
       ]
     }
   ],
   "budgetBreakdown": {
     "accommodation": {
-      "estimated": 15000,
-      "notes": "Budget-friendly options for ${daysDiff} nights"
+      "estimated": ${Math.floor(targetBudget * 0.4)},
+      "notes": "Budget hostels/guesthouses for ${daysDiff} nights - specific recommendations"
     },
     "transportation": {
-      "estimated": 8000,
-      "notes": "Economic transport options"
+      "estimated": ${Math.floor(targetBudget * 0.25)},
+      "notes": "Cheapest transport from ${trip.current_location} + local public transport"
     },
     "food": {
-      "estimated": 6000,
-      "notes": "Mix of local and affordable dining"
+      "estimated": ${Math.floor(targetBudget * 0.2)},
+      "notes": "Street food, local eateries, and budget meals"
     },
     "activities": {
-      "estimated": 4000,
-      "notes": "Entry fees and experiences within budget"
+      "estimated": ${Math.floor(targetBudget * 0.1)},
+      "notes": "Free attractions and low-cost experiences"
     },
     "miscellaneous": {
-      "estimated": 2000,
-      "notes": "Shopping and unexpected expenses"
+      "estimated": ${Math.floor(targetBudget * 0.05)},
+      "notes": "Emergency fund and small purchases"
     }
   },
   "transportation": {
-    "gettingThere": "Most economical transport recommendation with cost",
+    "gettingThere": "Cheapest option from ${trip.current_location} with exact cost",
     "localTransport": {
-      "modes": ["Budget transport options"],
-      "dailyCost": 200
+      "modes": ["Public bus", "Metro", "Walking"],
+      "dailyCost": ${Math.floor(targetBudget * 0.25 / daysDiff)}
     }
   },
-  "accommodation": "Budget-friendly hotel recommendations with specific areas",
+  "accommodation": "Specific budget hostels/hotels in ${trip.destination} within price range",
   "foodRecommendations": [
     {
-      "name": "Restaurant/dish name",
-      "type": "Local/Budget/Street Food",
-      "description": "Description of food",
-      "estimatedCost": 250
+      "name": "Specific local food/restaurant",
+      "type": "Street Food/Budget",
+      "description": "What makes it budget-friendly",
+      "estimatedCost": ${Math.floor(targetBudget * 0.2 / (daysDiff * 2))}
     }
   ],
   "travelTips": [
-    "Budget-saving tip 1",
-    "Budget-saving tip 2",
-    "How to stay within budget"
+    "Specific tip to save money in ${trip.destination}",
+    "How to find budget accommodation",
+    "Best free activities in ${trip.destination}"
   ],
   "hiddenGems": [
     {
-      "name": "Free or low-cost attraction",
-      "description": "Why it's special and budget-friendly",
-      "location": "Specific location"
+      "name": "Free/very cheap attraction",
+      "description": "Why it's budget-friendly and worth visiting",
+      "location": "Exact location"
     }
   ],
   "totalEstimatedCost": ${targetBudget}
 }
 
-IMPORTANT VALIDATION:
-- Generate activities for ALL ${daysDiff} days
-- Include specific timings (Morning, Afternoon, Evening) for each day
-- Each day should have 3-5 activities
-- The sum of all budgetBreakdown items must NOT exceed ₹${maxBudget.toLocaleString()}
-- Provide realistic current pricing for ${trip.destination}
-- Focus on value-for-money options that fit the budget
-- Use ONLY the JSON format above, no additional text or markdown`;
+FINAL VALIDATION - BEFORE RESPONDING:
+1. Add up all costs in budgetBreakdown
+2. Ensure total is ≤ ₹${maxBudget.toLocaleString()}
+3. If over budget, reduce ALL categories proportionally
+4. Double-check accommodation costs are realistic for budget travel
+5. Verify all activities have realistic costs for ${trip.destination}
+
+Use ONLY the JSON format above, no additional text or markdown. The total MUST be within budget.`;
 
     const makeApiCall = () => {
       return fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
@@ -223,9 +220,9 @@ IMPORTANT VALIDATION:
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
+            temperature: 0.3,
+            topK: 20,
+            topP: 0.8,
             maxOutputTokens: 8192,
           }
         }),
@@ -271,22 +268,47 @@ IMPORTANT VALIDATION:
         throw new Error('Daily itinerary missing from AI response');
       }
 
-      // Validate budget doesn't exceed maximum
+      // STRICT budget validation and enforcement
       if (planData.budgetBreakdown) {
         const totalCost = Object.values(planData.budgetBreakdown).reduce((sum: number, item: any) => {
           return sum + (typeof item.estimated === 'number' ? item.estimated : 0);
         }, 0);
         
-        if (totalCost > maxBudget) {
-          console.warn(`Generated plan exceeds budget: ₹${totalCost.toLocaleString()} > ₹${maxBudget.toLocaleString()}`);
-          // We'll still return it but log the warning
-        }
+        console.log(`Generated cost: ₹${totalCost.toLocaleString()}, Max budget: ₹${maxBudget.toLocaleString()}`);
         
-        planData.totalEstimatedCost = totalCost;
-        console.log(`Total estimated cost: ₹${totalCost.toLocaleString()}`);
+        // If the plan exceeds budget, force it to fit within budget
+        if (totalCost > maxBudget) {
+          console.warn(`Plan exceeds budget by ₹${(totalCost - maxBudget).toLocaleString()}, adjusting...`);
+          
+          // Calculate reduction factor to fit within max budget
+          const reductionFactor = (maxBudget * 0.95) / totalCost; // Use 95% of max budget for safety
+          
+          // Apply reduction to all categories
+          Object.keys(planData.budgetBreakdown).forEach(key => {
+            if (planData.budgetBreakdown[key].estimated) {
+              planData.budgetBreakdown[key].estimated = Math.floor(
+                planData.budgetBreakdown[key].estimated * reductionFactor
+              );
+              planData.budgetBreakdown[key].notes += " (Adjusted to fit budget)";
+            }
+          });
+          
+          // Recalculate total
+          const adjustedTotal = Object.values(planData.budgetBreakdown).reduce((sum: number, item: any) => {
+            return sum + (typeof item.estimated === 'number' ? item.estimated : 0);
+          }, 0);
+          
+          planData.totalEstimatedCost = adjustedTotal;
+          planData.summary = `Budget-conscious ${daysDiff}-day trip to ${trip.destination} designed to stay within your ₹${minBudget.toLocaleString()}-₹${maxBudget.toLocaleString()} budget (Total: ₹${adjustedTotal.toLocaleString()})`;
+          
+          console.log(`Adjusted total cost: ₹${adjustedTotal.toLocaleString()}`);
+        } else {
+          planData.totalEstimatedCost = totalCost;
+        }
       }
       
       console.log(`Trip plan generated successfully with ${planData.dailyItinerary.length} days`);
+      console.log(`Final total cost: ₹${planData.totalEstimatedCost?.toLocaleString() || 'N/A'}`);
       
       return new Response(JSON.stringify({ plan: planData }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -296,10 +318,19 @@ IMPORTANT VALIDATION:
       console.error('Failed to parse JSON:', parseError);
       console.log('Raw response that failed to parse:', generatedPlan.substring(0, 1000) + '...');
       
-      // Generate a detailed fallback with daily itinerary that respects budget
-      const budgetPerDay = Math.floor(targetBudget / daysDiff);
+      // Generate a strict budget-compliant fallback
+      const accommodationCost = Math.floor(targetBudget * 0.4);
+      const transportationCost = Math.floor(targetBudget * 0.25);
+      const foodCost = Math.floor(targetBudget * 0.2);
+      const activitiesCost = Math.floor(targetBudget * 0.1);
+      const miscCost = Math.floor(targetBudget * 0.05);
+      const fallbackTotal = accommodationCost + transportationCost + foodCost + activitiesCost + miscCost;
+      
       const startDate = new Date(trip.start_date);
       const fallbackItinerary = [];
+      
+      const dailyFoodBudget = Math.floor(foodCost / daysDiff);
+      const dailyActivityBudget = Math.floor(activitiesCost / daysDiff);
       
       for (let i = 0; i < daysDiff; i++) {
         const currentDate = new Date(startDate);
@@ -308,100 +339,97 @@ IMPORTANT VALIDATION:
         fallbackItinerary.push({
           day: i + 1,
           date: currentDate.toISOString().split('T')[0],
-          title: `Day ${i + 1} - Explore ${trip.destination}`,
+          title: `Day ${i + 1} - Budget Exploration of ${trip.destination}`,
           activities: [
             {
               time: "Morning",
-              activity: `Visit main attractions in ${trip.destination}`,
-              location: trip.destination,
-              estimatedCost: Math.floor(budgetPerDay * 0.3),
-              category: "Sightseeing"
+              activity: `Visit free attractions and public areas in ${trip.destination}`,
+              location: `Central ${trip.destination}`,
+              estimatedCost: Math.floor(dailyActivityBudget * 0.3),
+              category: "Sightseeing",
+              budgetNote: "Free or very low-cost attraction"
             },
             {
               time: "Afternoon",
-              activity: "Local lunch and cultural exploration",
-              location: "Local restaurant",
-              estimatedCost: Math.floor(budgetPerDay * 0.2),
-              category: "Food"
+              activity: "Budget local lunch at street food stalls",
+              location: "Local food area",
+              estimatedCost: Math.floor(dailyFoodBudget * 0.6),
+              category: "Food",
+              budgetNote: "Affordable local cuisine"
             },
             {
               time: "Evening",
-              activity: "Leisure time and local markets",
+              activity: "Explore local markets and free entertainment",
               location: "Local market area",
-              estimatedCost: Math.floor(budgetPerDay * 0.15),
-              category: "Shopping"
+              estimatedCost: Math.floor(dailyActivityBudget * 0.2),
+              category: "Culture",
+              budgetNote: "Free cultural experience"
             }
           ]
         });
       }
       
-      const accommodationCost = Math.floor(targetBudget * 0.4);
-      const transportationCost = Math.floor(targetBudget * 0.25);
-      const foodCost = Math.floor(targetBudget * 0.2);
-      const activitiesCost = Math.floor(targetBudget * 0.1);
-      const miscCost = targetBudget - accommodationCost - transportationCost - foodCost - activitiesCost;
-      
       const fallbackPlan = {
-        summary: `${daysDiff}-day budget-conscious trip to ${trip.destination} designed to stay within your budget of ₹${minBudget.toLocaleString()} - ₹${maxBudget.toLocaleString()}`,
+        summary: `Budget-conscious ${daysDiff}-day trip to ${trip.destination} strictly designed within ₹${minBudget.toLocaleString()}-₹${maxBudget.toLocaleString()} budget (Total: ₹${fallbackTotal.toLocaleString()})`,
         dailyItinerary: fallbackItinerary,
         budgetBreakdown: {
           accommodation: {
             estimated: accommodationCost,
-            notes: `Budget accommodation for ${daysDiff} nights within your price range`
+            notes: `Budget hostels/guesthouses for ${daysDiff} nights within your price range`
           },
           transportation: {
             estimated: transportationCost,
-            notes: "Economic transport options from " + trip.current_location
+            notes: `Cheapest transport from ${trip.current_location} + local public transport`
           },
           food: {
             estimated: foodCost,
-            notes: "Budget-friendly local meals and dining"
+            notes: "Street food and budget local meals"
           },
           activities: {
             estimated: activitiesCost,
-            notes: "Affordable sightseeing and experiences"
+            notes: "Free attractions and minimal-cost experiences"
           },
           miscellaneous: {
             estimated: miscCost,
-            notes: "Shopping and unexpected expenses"
+            notes: "Emergency fund and small purchases"
           }
         },
         transportation: {
           gettingThere: `Budget transport from ${trip.current_location} to ${trip.destination}`,
           localTransport: {
-            modes: ["Public transport", "Walking", "Budget taxis"],
-            dailyCost: Math.floor(budgetPerDay * 0.1)
+            modes: ["Public transport", "Walking", "Budget options"],
+            dailyCost: Math.floor(transportationCost / daysDiff)
           }
         },
-        accommodation: `Budget-friendly accommodation in ${trip.destination} within your price range`,
+        accommodation: `Budget hostels and guesthouses in ${trip.destination} within ₹${Math.floor(accommodationCost / daysDiff)} per night`,
         foodRecommendations: [
           {
             name: "Local street food",
             type: "Street Food",
-            description: `Authentic ${trip.destination} street food`,
-            estimatedCost: Math.floor(budgetPerDay * 0.1)
+            description: `Authentic and budget-friendly ${trip.destination} street food`,
+            estimatedCost: Math.floor(dailyFoodBudget * 0.3)
           },
           {
-            name: "Local restaurant",
+            name: "Local budget restaurants",
             type: "Budget dining",
-            description: `Traditional local cuisine at budget prices`,
-            estimatedCost: Math.floor(budgetPerDay * 0.15)
+            description: "Traditional local cuisine at affordable prices",
+            estimatedCost: Math.floor(dailyFoodBudget * 0.6)
           }
         ],
         travelTips: [
-          "Use public transportation to save money",
-          "Eat at local places for authentic and cheaper meals",
-          "Book accommodation in advance for better rates",
-          "Look for free walking tours and attractions"
+          `Use public transportation in ${trip.destination} to save money`,
+          "Eat at local street food places for authentic and cheaper meals",
+          "Look for free walking tours and attractions",
+          "Book budget accommodation in advance for better rates"
         ],
         hiddenGems: [
           {
             name: "Free local attractions",
-            description: "Explore parks, markets, and cultural sites that don't charge entry fees",
+            description: "Explore parks, markets, and cultural sites with no entry fees",
             location: `Free attractions in ${trip.destination}`
           }
         ],
-        totalEstimatedCost: targetBudget
+        totalEstimatedCost: fallbackTotal
       };
       
       return new Response(JSON.stringify({ plan: fallbackPlan }), {
@@ -413,7 +441,7 @@ IMPORTANT VALIDATION:
     console.error('Error in generate-trip-plan function:', error);
     return new Response(JSON.stringify({ 
       error: error.message,
-      details: 'Please try again in a few moments. The AI service may be temporarily overloaded.'
+      details: 'Please try again. The AI service may be temporarily overloaded.'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
