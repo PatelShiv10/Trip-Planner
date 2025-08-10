@@ -47,6 +47,11 @@ interface HiddenGem {
   location: string;
 }
 
+interface LocalTransport {
+  modes?: string[];
+  dailyCost?: number;
+}
+
 interface TripPlan {
   summary: string;
   plainText?: string;
@@ -54,7 +59,7 @@ interface TripPlan {
   budgetBreakdown: Record<string, BudgetItem>;
   transportation: {
     gettingThere: string;
-    localTransport: string;
+    localTransport: string | LocalTransport;
   };
   accommodation: string;
   foodRecommendations: FoodRecommendation[];
@@ -133,6 +138,34 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
     acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
     return acc;
   }, {} as Record<string, number>);
+
+  // Helper function to render local transport
+  const renderLocalTransport = (localTransport: string | LocalTransport) => {
+    if (typeof localTransport === 'string') {
+      return <p className="text-gray-700">{localTransport}</p>;
+    }
+    
+    if (typeof localTransport === 'object' && localTransport !== null) {
+      return (
+        <div className="space-y-2">
+          {localTransport.modes && localTransport.modes.length > 0 && (
+            <div>
+              <span className="font-medium">Available modes: </span>
+              <span className="text-gray-700">{localTransport.modes.join(', ')}</span>
+            </div>
+          )}
+          {localTransport.dailyCost && (
+            <div>
+              <span className="font-medium">Daily cost: </span>
+              <span className="text-gray-700">{formatINR(localTransport.dailyCost)}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    return <p className="text-gray-500">Local transport information not available</p>;
+  };
 
   return (
     <div className="space-y-6 trip-plan-content">
@@ -277,7 +310,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
             {plan.transportation.localTransport && (
               <div>
                 <h4 className="font-medium mb-2">Local Transportation</h4>
-                <p className="text-gray-700">{plan.transportation.localTransport}</p>
+                {renderLocalTransport(plan.transportation.localTransport)}
               </div>
             )}
           </CardContent>
