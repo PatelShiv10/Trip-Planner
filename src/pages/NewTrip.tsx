@@ -170,12 +170,12 @@ const NewTrip = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Label>Budget Range</Label>
                 <RadioGroup
                   value={budgetType}
                   onValueChange={(value) => setBudgetType(value as 'preset' | 'custom')}
-                  className="mb-3"
+                  className="flex flex-col space-y-2"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="preset" id="preset" />

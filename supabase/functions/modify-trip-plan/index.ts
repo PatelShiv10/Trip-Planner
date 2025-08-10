@@ -10,7 +10,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,7 +25,7 @@ serve(async (req) => {
       .map((msg: any) => `${msg.role}: ${msg.content}`)
       .join('\n');
 
-    const prompt = `You are an AI travel assistant helping to modify an existing trip plan. The user wants to make changes to their current itinerary.
+    const prompt = `You are an expert AI travel assistant specializing in India and Indian travel costs. Help modify an existing trip plan with accurate Indian pricing.
 
 Current Trip Plan:
 ${JSON.stringify(currentPlan, null, 2)}
@@ -36,24 +35,33 @@ ${conversationContext}
 
 User's new request: ${userMessage}
 
+CRITICAL PRICING GUIDELINES FOR INDIA:
+- Train prices: AC 3-tier Delhi-Mumbai ₹2,500-3,500, Sleeper ₹800-1,200, AC 2-tier ₹4,000-5,500
+- Flight prices: Delhi-Mumbai ₹4,000-15,000 depending on timing and airline
+- Hotels: Budget ₹1,000-2,500/night, Mid-range ₹2,500-6,000/night, Luxury ₹6,000+/night
+- Food: Street food ₹50-200/meal, Restaurant ₹300-800/meal, Fine dining ₹1,500+/meal
+- Local transport: Auto-rickshaw ₹50-200, Taxi ₹200-500, Metro ₹20-60
+- Attractions: Most monuments ₹25-50 for Indians, ₹500-600 for foreigners
+
+Use these realistic price ranges. Adjust for location - Mumbai/Delhi are more expensive than smaller cities.
+
 Please respond in JSON format with:
 {
-  "response": "Your conversational response to the user explaining what changes you're making",
+  "response": "Your conversational response explaining changes with accurate pricing context",
   "updatedPlan": {
-    // The modified trip plan in the same structure as the current plan
-    // Only include this if you're actually modifying the plan
-    // If you're just answering questions, omit this field
+    // The modified trip plan with corrected realistic Indian prices
+    // Only include this if actually modifying the plan
   }
 }
 
 Guidelines:
 - Be conversational and helpful
-- Only modify the plan if the user specifically requests changes
-- If modifying costs, use Indian Rupees (₹)
-- Maintain the same JSON structure for the updated plan
-- For questions or clarifications, just provide the response without updatedPlan
+- Use ACCURATE Indian pricing - avoid inflated costs
+- Provide realistic alternatives when suggesting changes
+- For transportation, consider actual travel times and comfort levels
+- Include local insights and tips for better value
 
-Make the response natural and engaging while being helpful about travel planning.`;
+Make the response natural and engaging while being helpful about realistic Indian travel costs.`;
 
     console.log('Modifying trip plan with user request:', userMessage);
 
@@ -91,9 +99,7 @@ Make the response natural and engaging while being helpful about travel planning
     
     let generatedResponse = data.candidates[0].content.parts[0].text;
     
-    // Try to parse as JSON
     try {
-      // Clean up the response to extract JSON
       const jsonMatch = generatedResponse.match(/```json\s*([\s\S]*?)\s*```/) || 
                        generatedResponse.match(/\{[\s\S]*\}/);
       
@@ -107,7 +113,6 @@ Make the response natural and engaging while being helpful about travel planning
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } else {
-        // Fallback if JSON parsing fails
         return new Response(JSON.stringify({
           response: generatedResponse,
         }), {
