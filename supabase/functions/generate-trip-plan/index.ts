@@ -21,7 +21,13 @@ serve(async (req) => {
       throw new Error('Gemini API key not configured');
     }
 
-    const prompt = `You are an expert travel planner specializing in India with deep knowledge of accurate Indian pricing. Create a detailed trip plan with realistic costs in Indian Rupees.
+    // Calculate the number of days for the trip
+    const startDate = new Date(trip.start_date);
+    const endDate = new Date(trip.end_date);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+
+    const prompt = `You are an expert travel planner specializing in India with deep knowledge of accurate Indian pricing. Create a detailed ${daysDiff}-day trip plan with realistic costs in Indian Rupees.
 
 Trip Details:
 - Destination: ${trip.destination}
@@ -32,106 +38,97 @@ Trip Details:
 - Interests: ${trip.interests}
 
 CRITICAL PRICING GUIDELINES FOR INDIA:
-- Trains: AC 3-tier ₹2,500-3,500, Sleeper ₹800-1,200, AC 2-tier ₹4,000-5,500 (Delhi-Mumbai)
-- Flights: Domestic ₹4,000-15,000 depending on route and timing
-- Hotels: Budget ₹1,000-2,500/night, Mid-range ₹2,500-6,000/night, Luxury ₹6,000+/night
-- Food: Street food ₹50-200/meal, Restaurant ₹300-800/meal, Fine dining ₹1,500+/meal
-- Local transport: Auto ₹50-200, Taxi ₹200-500, Metro ₹20-60 per trip
-- Attractions: Indian citizens ₹25-50, Foreign tourists ₹500-600 for major monuments
+- Trains: AC 3-tier ₹1,500-2,500, Sleeper ₹600-900, AC 2-tier ₹2,500-3,500 (Delhi-Mumbai)
+- Flights: Domestic ₹3,000-12,000 depending on route and timing
+- Hotels: Budget ₹800-2,000/night, Mid-range ₹2,000-5,000/night, Luxury ₹5,000+/night
+- Food: Street food ₹30-150/meal, Restaurant ₹200-600/meal, Fine dining ₹1,000+/meal
+- Local transport: Auto ₹30-150, Taxi ₹150-400, Metro ₹15-50 per trip
+- Attractions: Indian citizens ₹20-40, Foreign tourists ₹200-500 for major monuments
 - Adjust prices for city tiers - Mumbai/Delhi more expensive than Tier-2/3 cities
 
-Please provide a structured JSON response with the following format:
+MANDATORY: You MUST provide a complete daily itinerary for all ${daysDiff} days. Each day must have specific activities, timings, and locations.
+
+Please provide a structured JSON response with the following EXACT format:
 {
-  "title": "Trip title",
-  "overview": "Brief trip overview",
-  "duration": "X days",
-  "totalBudget": "₹X,XXX - ₹X,XXX",
-  "highlights": ["highlight1", "highlight2", "highlight3"],
-  "itinerary": [
+  "summary": "Brief trip overview",
+  "dailyItinerary": [
     {
       "day": 1,
-      "title": "Day title",
+      "date": "${trip.start_date}",
+      "title": "Day 1 title",
       "activities": [
         {
-          "time": "Morning/Afternoon/Evening",
+          "time": "Morning",
           "activity": "Activity description",
-          "location": "Location name",
-          "cost": "₹XXX",
-          "duration": "X hours",
-          "tips": "Local tips"
-        }
-      ],
-      "meals": [
+          "location": "Specific location name",
+          "estimatedCost": 500,
+          "category": "Sightseeing"
+        },
         {
-          "type": "Breakfast/Lunch/Dinner",
-          "suggestion": "Restaurant/dish name",
-          "cost": "₹XXX"
+          "time": "Afternoon",
+          "activity": "Activity description",
+          "location": "Specific location name",
+          "estimatedCost": 300,
+          "category": "Food"
         }
-      ],
-      "accommodation": {
-        "type": "Hotel/Hostel category",
-        "suggestion": "Accommodation suggestion",
-        "cost": "₹XXX per night"
-      }
+      ]
     }
   ],
-  "transportation": {
-    "mainTransport": {
-      "mode": "Train/Flight/Bus",
-      "details": "Specific recommendations",
-      "cost": "₹XXX",
-      "duration": "X hours"
+  "budgetBreakdown": {
+    "accommodation": {
+      "estimated": 15000,
+      "notes": "Budget hotels for ${daysDiff} nights"
     },
-    "localTransport": {
-      "modes": ["Metro", "Auto", "Taxi"],
-      "dailyCost": "₹XXX"
+    "transportation": {
+      "estimated": 8000,
+      "notes": "Train/flight + local transport"
+    },
+    "food": {
+      "estimated": 6000,
+      "notes": "Mix of street food and restaurants"
+    },
+    "activities": {
+      "estimated": 4000,
+      "notes": "Entry fees and experiences"
     }
   },
-  "budgetBreakdown": {
-    "accommodation": "₹XXX",
-    "transportation": "₹XXX",
-    "food": "₹XXX",
-    "activities": "₹XXX",
-    "shopping": "₹XXX",
-    "miscellaneous": "₹XXX",
-    "total": "₹XXX"
+  "transportation": {
+    "gettingThere": "Specific transport recommendation with cost",
+    "localTransport": {
+      "modes": ["Metro", "Auto-rickshaw", "Taxi"],
+      "dailyCost": 200
+    }
   },
-  "expenses": [
+  "accommodation": "Specific hotel recommendations with areas",
+  "foodRecommendations": [
     {
-      "category": "Transportation",
-      "description": "Main transport cost",
-      "amount": XXX
-    },
-    {
-      "category": "Accommodation",
-      "description": "Total accommodation cost",
-      "amount": XXX
-    },
-    {
-      "category": "Food",
-      "description": "Total food cost",
-      "amount": XXX
-    },
-    {
-      "category": "Activities",
-      "description": "Sightseeing and activities",
-      "amount": XXX
+      "name": "Restaurant/dish name",
+      "type": "Local/Street Food/Fine Dining",
+      "description": "Description of food",
+      "estimatedCost": 250
     }
   ],
   "travelTips": [
-    "Local tip 1",
-    "Local tip 2",
-    "Local tip 3"
+    "Practical tip 1",
+    "Practical tip 2"
   ],
-  "packingList": [
-    "Essential item 1",
-    "Essential item 2"
+  "hiddenGems": [
+    {
+      "name": "Hidden gem name",
+      "description": "Why it's special",
+      "location": "Specific location"
+    }
   ]
 }
 
-Use ACCURATE Indian pricing. Avoid inflated costs. Consider seasonal variations and provide practical, realistic suggestions that match the actual cost of travel in India.`;
+IMPORTANT: 
+- Generate activities for ALL ${daysDiff} days
+- Include specific timings (Morning, Afternoon, Evening) for each day
+- Provide realistic Indian pricing for each activity
+- Each day should have 3-5 activities
+- Use ONLY the JSON format above, no additional text or markdown`;
 
-    console.log('Generating trip plan for:', trip.destination);
+    console.log(`Generating ${daysDiff}-day trip plan for:`, trip.destination);
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -166,58 +163,134 @@ Use ACCURATE Indian pricing. Avoid inflated costs. Consider seasonal variations 
     }
     
     let generatedPlan = data.candidates[0].content.parts[0].text;
+    console.log('Raw AI response:', generatedPlan.substring(0, 500) + '...');
     
     try {
+      // Clean the response to extract JSON
+      let jsonStr = generatedPlan;
+      
+      // Remove markdown code blocks if present
       const jsonMatch = generatedPlan.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       generatedPlan.match(/```\s*([\s\S]*?)\s*```/) ||
                        generatedPlan.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {
-        const jsonStr = jsonMatch[1] || jsonMatch[0];
-        const planData = JSON.parse(jsonStr);
-        
-        console.log('Trip plan generated successfully');
-        
-        return new Response(JSON.stringify({ plan: planData }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } else {
-        throw new Error('No valid JSON found in response');
+        jsonStr = jsonMatch[1] || jsonMatch[0];
       }
+      
+      // Clean up any extra text before/after JSON
+      const startBrace = jsonStr.indexOf('{');
+      const lastBrace = jsonStr.lastIndexOf('}');
+      
+      if (startBrace !== -1 && lastBrace !== -1) {
+        jsonStr = jsonStr.substring(startBrace, lastBrace + 1);
+      }
+      
+      const planData = JSON.parse(jsonStr);
+      
+      // Validate that we have daily itinerary
+      if (!planData.dailyItinerary || !Array.isArray(planData.dailyItinerary) || planData.dailyItinerary.length === 0) {
+        console.error('No daily itinerary found in response');
+        throw new Error('Daily itinerary missing from AI response');
+      }
+      
+      console.log(`Trip plan generated successfully with ${planData.dailyItinerary.length} days`);
+      
+      return new Response(JSON.stringify({ plan: planData }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+      
     } catch (parseError) {
-      console.log('Failed to parse JSON, using fallback structure');
+      console.error('Failed to parse JSON:', parseError);
+      console.log('Raw response that failed to parse:', generatedPlan);
+      
+      // Generate a more detailed fallback with daily itinerary
+      const startDate = new Date(trip.start_date);
+      const fallbackItinerary = [];
+      
+      for (let i = 0; i < daysDiff; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        
+        fallbackItinerary.push({
+          day: i + 1,
+          date: currentDate.toISOString().split('T')[0],
+          title: `Day ${i + 1} - Explore ${trip.destination}`,
+          activities: [
+            {
+              time: "Morning",
+              activity: `Visit main attractions in ${trip.destination}`,
+              location: trip.destination,
+              estimatedCost: 500,
+              category: "Sightseeing"
+            },
+            {
+              time: "Afternoon",
+              activity: "Local lunch and cultural exploration",
+              location: "Local restaurant",
+              estimatedCost: 300,
+              category: "Food"
+            },
+            {
+              time: "Evening",
+              activity: "Leisure time and local markets",
+              location: "Local market area",
+              estimatedCost: 200,
+              category: "Shopping"
+            }
+          ]
+        });
+      }
       
       const fallbackPlan = {
-        title: `Trip to ${trip.destination}`,
-        overview: generatedPlan.substring(0, 200) + '...',
-        duration: "As planned",
-        totalBudget: trip.budget_range || "₹50,000 - ₹1,00,000",
-        highlights: ["Explore local attractions", "Experience local culture", "Enjoy regional cuisine"],
-        itinerary: [],
-        transportation: {
-          mainTransport: {
-            mode: "To be determined",
-            details: "Based on your preferences",
-            cost: "₹5,000",
-            duration: "Varies"
+        summary: `${daysDiff}-day trip to ${trip.destination} with daily activities and local experiences`,
+        dailyItinerary: fallbackItinerary,
+        budgetBreakdown: {
+          accommodation: {
+            estimated: Math.round(daysDiff * 2000),
+            notes: `Budget to mid-range hotels for ${daysDiff} nights`
+          },
+          transportation: {
+            estimated: 8000,
+            notes: "Main transport + local travel"
+          },
+          food: {
+            estimated: Math.round(daysDiff * 800),
+            notes: "Mix of local and restaurant meals"
+          },
+          activities: {
+            estimated: Math.round(daysDiff * 600),
+            notes: "Sightseeing and experiences"
           }
         },
-        budgetBreakdown: {
-          accommodation: "₹20,000",
-          transportation: "₹15,000",
-          food: "₹10,000",
-          activities: "₹8,000",
-          shopping: "₹5,000",
-          miscellaneous: "₹2,000",
-          total: "₹60,000"
+        transportation: {
+          gettingThere: `Book train or flight from ${trip.current_location} to ${trip.destination}`,
+          localTransport: {
+            modes: ["Auto-rickshaw", "Taxi", "Local bus"],
+            dailyCost: 200
+          }
         },
-        expenses: [
-          { category: "Transportation", description: "Travel costs", amount: 15000 },
-          { category: "Accommodation", description: "Hotel stays", amount: 20000 },
-          { category: "Food", description: "Meals and dining", amount: 10000 },
-          { category: "Activities", description: "Sightseeing", amount: 8000 }
+        accommodation: `Look for hotels in central ${trip.destination} area`,
+        foodRecommendations: [
+          {
+            name: "Local specialties",
+            type: "Local cuisine",
+            description: `Try authentic ${trip.destination} dishes`,
+            estimatedCost: 300
+          }
         ],
-        travelTips: ["Book in advance for better rates", "Try local cuisine", "Respect local customs"],
-        packingList: ["Comfortable shoes", "Weather-appropriate clothing", "Essential documents"]
+        travelTips: [
+          "Book accommodation in advance for better rates",
+          "Try local street food for authentic experience",
+          "Carry cash as many local vendors don't accept cards"
+        ],
+        hiddenGems: [
+          {
+            name: "Local markets",
+            description: "Experience authentic local culture",
+            location: `Traditional markets in ${trip.destination}`
+          }
+        ]
       };
       
       return new Response(JSON.stringify({ plan: fallbackPlan }), {
