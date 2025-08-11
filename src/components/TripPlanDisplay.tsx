@@ -10,9 +10,11 @@ import {
   Bed, 
   Lightbulb,
   Star,
-  Clock
+  Clock,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
-import { formatINR, convertToINR } from '@/lib/currency';
+import { formatINR } from '@/lib/currency';
 
 interface Activity {
   time: string;
@@ -65,6 +67,7 @@ interface TripPlan {
   foodRecommendations: FoodRecommendation[];
   travelTips: string[];
   hiddenGems: HiddenGem[];
+  totalEstimatedCost?: number;
 }
 
 interface Expense {
@@ -96,7 +99,32 @@ const categoryIcons = {
   Activities: Star,
   Shopping: DollarSign,
   Entertainment: Star,
+  Miscellaneous: DollarSign,
   Other: DollarSign
+};
+
+// Helper function to parse budget range
+const parseBudgetRange = (budgetRange: string): { min: number; max: number } => {
+  // Handle custom budget ranges like "₹10,000-₹50,000"
+  const match = budgetRange.match(/₹([\d,]+)-₹([\d,]+)/);
+  if (match) {
+    return {
+      min: parseInt(match[1].replace(/,/g, '')),
+      max: parseInt(match[2].replace(/,/g, ''))
+    };
+  }
+  
+  // Handle predefined ranges
+  switch (budgetRange.toLowerCase()) {
+    case 'budget':
+      return { min: 25000, max: 75000 };
+    case 'mid-range':
+      return { min: 75000, max: 200000 };
+    case 'luxury':
+      return { min: 200000, max: 500000 };
+    default:
+      return { min: 25000, max: 75000 };
+  }
 };
 
 export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses, tripDetails }) => {
@@ -120,19 +148,16 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
     );
   }
 
-  // Convert estimated budget to INR if needed
-  const convertedBudgetBreakdown = Object.entries(plan.budgetBreakdown).reduce((acc, [category, budget]) => {
-    // Assume the plan already has INR values, but if not, convert from USD
-    const estimatedAmount = typeof budget.estimated === 'number' ? budget.estimated : 0;
-    acc[category] = {
-      ...budget,
-      estimated: estimatedAmount < 10000 ? convertToINR(estimatedAmount) : estimatedAmount
-    };
-    return acc;
-  }, {} as Record<string, any>);
+  // Parse the user's budget range
+  const { min: userMinBudget, max: userMaxBudget } = parseBudgetRange(tripDetails.budget_range);
 
-  const totalEstimated = Object.values(convertedBudgetBreakdown).reduce((sum, item) => sum + item.estimated, 0);
+  // Calculate total estimated cost from budget breakdown
+  const totalEstimated = Object.values(plan.budgetBreakdown).reduce((sum, item) => sum + (item.estimated || 0), 0);
   const totalActual = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  // Check if the plan is within budget
+  const isWithinBudget = totalEstimated >= userMinBudget && totalEstimated <= userMaxBudget;
+  const budgetStatus = totalEstimated > userMaxBudget ? 'over' : totalEstimated < userMinBudget ? 'under' : 'within';
 
   const expensesByCategory = expenses.reduce((acc, expense) => {
     acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
@@ -169,14 +194,41 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
 
   return (
     <div className="space-y-6 trip-plan-content">
-      {/* Summary */}
+      {/* Summary with Budget Status */}
       {plan.summary && (
         <Card>
           <CardHeader>
-            <CardTitle>Trip Summary</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Trip Summary</span>
+              <div className="flex items-center space-x-2">
+                {isWithinBudget ? (
+                  <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Within Budget
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {budgetStatus === 'over' ? 'Over Budget' : 'Under Budget'}
+                  </Badge>
+                )}
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{plan.summary}</p>
+            <p className="text-gray-700 mb-4">{plan.summary}</p>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700">Your Budget Range:</span>
+                <span className="font-bold text-gray-900">{formatINR(userMinBudget)} - {formatINR(userMaxBudget)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-2">
+                <span className="font-medium text-gray-700">AI Estimated Cost:</span>
+                <span className={`font-bold ${isWithinBudget ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatINR(totalEstimated)}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -218,7 +270,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                           <div className="flex items-center space-x-2">
                             <Badge variant="secondary">{activity.category}</Badge>
                             <span className="text-sm font-medium">
-                              {formatINR(activity.estimatedCost < 1000 ? convertToINR(activity.estimatedCost) : activity.estimatedCost)}
+                              {formatINR(activity.estimatedCost)}
                             </span>
                           </div>
                         </div>
@@ -233,7 +285,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
       )}
 
       {/* Budget Breakdown */}
-      {Object.keys(convertedBudgetBreakdown).length > 0 && (
+      {Object.keys(plan.budgetBreakdown).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -242,19 +294,25 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900">Estimated Total</h4>
-                <p className="text-2xl font-bold text-blue-700">{formatINR(totalEstimated)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-900">Your Budget Range</h4>
+                <p className="text-lg font-bold text-blue-700">{formatINR(userMinBudget)} - {formatINR(userMaxBudget)}</p>
               </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h4 className="font-medium text-green-900">Actual Spent</h4>
-                <p className="text-2xl font-bold text-green-700">{formatINR(totalActual)}</p>
+              <div className={`p-4 rounded-lg border ${isWithinBudget ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <h4 className={`font-medium ${isWithinBudget ? 'text-green-900' : 'text-red-900'}`}>AI Estimated Total</h4>
+                <p className={`text-2xl font-bold ${isWithinBudget ? 'text-green-700' : 'text-red-700'}`}>
+                  {formatINR(totalEstimated)}
+                </p>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h4 className="font-medium text-purple-900">Actual Spent</h4>
+                <p className="text-2xl font-bold text-purple-700">{formatINR(totalActual)}</p>
               </div>
             </div>
             
             <div className="space-y-3">
-              {Object.entries(convertedBudgetBreakdown).map(([category, budget]) => {
+              {Object.entries(plan.budgetBreakdown).map(([category, budget]) => {
                 const Icon = categoryIcons[category as keyof typeof categoryIcons] || DollarSign;
                 const actualSpent = expensesByCategory[category] || 0;
                 const percentage = budget.estimated > 0 ? (actualSpent / budget.estimated) * 100 : 0;
@@ -348,7 +406,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium">{food.name}</h4>
                     <span className="text-sm font-medium">
-                      {formatINR(food.estimatedCost < 500 ? convertToINR(food.estimatedCost) : food.estimatedCost)}
+                      {formatINR(food.estimatedCost)}
                     </span>
                   </div>
                   <Badge variant="outline" className="mb-2">{food.type}</Badge>
