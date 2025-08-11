@@ -6,8 +6,19 @@ export const convertToINR = (amountInUSD: number): number => {
   return Math.round(amountInUSD * USD_TO_INR);
 };
 
-export const formatINR = (amount: number): string => {
-  return `₹${amount.toLocaleString('en-IN')}`;
+export const formatINR = (amount: number | null | undefined): string => {
+  // Handle null, undefined, or invalid numbers
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return '₹0';
+  }
+  
+  // Ensure amount is a valid number
+  const validAmount = Number(amount);
+  if (isNaN(validAmount)) {
+    return '₹0';
+  }
+  
+  return `₹${validAmount.toLocaleString('en-IN')}`;
 };
 
 export const parseBudgetRange = (budgetRange: string): { min: number; max: number } => {
