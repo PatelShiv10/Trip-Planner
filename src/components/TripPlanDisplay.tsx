@@ -294,7 +294,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h4 className="font-medium text-blue-900">Your Budget Range</h4>
                 <p className="text-lg font-bold text-blue-700">{formatINR(userMinBudget)} - {formatINR(userMaxBudget)}</p>
@@ -305,17 +305,11 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                   {formatINR(totalEstimated)}
                 </p>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <h4 className="font-medium text-purple-900">Actual Spent</h4>
-                <p className="text-2xl font-bold text-purple-700">{formatINR(totalActual)}</p>
-              </div>
             </div>
             
             <div className="space-y-3">
               {Object.entries(plan.budgetBreakdown).map(([category, budget]) => {
                 const Icon = categoryIcons[category as keyof typeof categoryIcons] || DollarSign;
-                const actualSpent = expensesByCategory[category] || 0;
-                const percentage = budget.estimated > 0 ? (actualSpent / budget.estimated) * 100 : 0;
                 
                 return (
                   <div key={category} className="p-3 border rounded-lg">
@@ -326,21 +320,9 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan, expenses
                       </div>
                       <div className="text-right text-sm">
                         <div>Estimated: <span className="font-medium">{formatINR(budget.estimated)}</span></div>
-                        <div>Actual: <span className="font-medium">{formatINR(actualSpent)}</span></div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{budget.notes}</p>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${
-                          percentage <= 100 ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {percentage.toFixed(1)}% of estimated budget
-                    </p>
+                    <p className="text-sm text-gray-600">{budget.notes}</p>
                   </div>
                 );
               })}
