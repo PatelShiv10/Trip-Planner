@@ -1,10 +1,13 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plane, MapPin, Calendar, Users, Brain, Shield, Globe, Star, ArrowRight, Sparkles, MessageCircle, Download, CreditCard, Zap, CheckCircle } from 'lucide-react';
+
 const Index = () => {
-  return <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
       {/* Navigation */}
       <nav className="relative z-10 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -55,7 +58,10 @@ const Index = () => {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              
+              <Button variant="outline" size="lg" className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 px-8 py-4 text-lg rounded-xl font-semibold">
+                <Globe className="mr-2 h-5 w-5" />
+                View Demo
+              </Button>
             </div>
 
             {/* Trust Indicators */}
@@ -90,44 +96,54 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[{
-            icon: Brain,
-            title: "Real-Time Price Scraping",
-            description: "Our AI scrapes live prices from booking sites, train websites, and hotel platforms for accurate costs",
-            color: "from-blue-500 to-cyan-500",
-            highlight: "NEW"
-          }, {
-            icon: Shield,
-            title: "Budget Guarantee",
-            description: "Plans are guaranteed to stay within your budget. No surprises, no overruns, just accurate planning",
-            color: "from-green-500 to-emerald-500",
-            highlight: "GUARANTEED"
-          }, {
-            icon: MessageCircle,
-            title: "Chat to Modify Plans",
-            description: "Talk to our AI assistant to adjust your itinerary, change transportation, or update activities instantly",
-            color: "from-purple-500 to-pink-500"
-          }, {
-            icon: Download,
-            title: "Professional PDF Export",
-            description: "Download beautiful PDF versions of your complete trip plans with all details and pricing included",
-            color: "from-orange-500 to-red-500"
-          }, {
-            icon: CreditCard,
-            title: "Smart Expense Tracking",
-            description: "Track your actual expenses and compare them with AI estimates to stay within budget throughout your trip",
-            color: "from-yellow-500 to-orange-500"
-          }, {
-            icon: Zap,
-            title: "Indian Travel Specialist",
-            description: "Specialized in Indian travel with accurate train bookings, local transport, and regional pricing",
-            color: "from-indigo-500 to-purple-500"
-          }].map((feature, idx) => <Card key={idx} className="relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl bg-gradient-to-br from-white to-gray-50">
-                {feature.highlight && <div className="absolute top-4 right-4">
+            {[
+              {
+                icon: Brain,
+                title: "Real-Time Price Scraping",
+                description: "Our AI scrapes live prices from booking sites, train websites, and hotel platforms for accurate costs",
+                color: "from-blue-500 to-cyan-500",
+                highlight: "NEW"
+              },
+              {
+                icon: Shield,
+                title: "Budget Guarantee",
+                description: "Plans are guaranteed to stay within your budget. No surprises, no overruns, just accurate planning",
+                color: "from-green-500 to-emerald-500",
+                highlight: "GUARANTEED"
+              },
+              {
+                icon: MessageCircle,
+                title: "Chat to Modify Plans",
+                description: "Talk to our AI assistant to adjust your itinerary, change transportation, or update activities instantly",
+                color: "from-purple-500 to-pink-500"
+              },
+              {
+                icon: Download,
+                title: "Professional PDF Export",
+                description: "Download beautiful PDF versions of your complete trip plans with all details and pricing included",
+                color: "from-orange-500 to-red-500"
+              },
+              {
+                icon: CreditCard,
+                title: "Smart Expense Tracking",
+                description: "Track your actual expenses and compare them with AI estimates to stay within budget throughout your trip",
+                color: "from-yellow-500 to-orange-500"
+              },
+              {
+                icon: Zap,
+                title: "Indian Travel Specialist",
+                description: "Specialized in Indian travel with accurate train bookings, local transport, and regional pricing",
+                color: "from-indigo-500 to-purple-500"
+              }
+            ].map((feature, idx) => (
+              <Card key={idx} className="relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl bg-gradient-to-br from-white to-gray-50">
+                {feature.highlight && (
+                  <div className="absolute top-4 right-4">
                     <span className={`px-2 py-1 text-xs font-bold rounded-full bg-gradient-to-r ${feature.color} text-white`}>
                       {feature.highlight}
                     </span>
-                  </div>}
+                  </div>
+                )}
                 <CardContent className="p-8">
                   <div className="text-center">
                     <div className={`p-4 bg-gradient-to-r ${feature.color} rounded-2xl inline-block mb-6 shadow-lg`}>
@@ -137,7 +153,8 @@ const Index = () => {
                     <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                   </div>
                 </CardContent>
-              </Card>)}
+              </Card>
+            ))}
           </div>
         </div>
       </div>
@@ -155,23 +172,30 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[{
-            step: 1,
-            title: "Set Your Budget & Preferences",
-            description: "Enter your destination, dates, and budget range. Our AI will respect your budget limits strictly.",
-            icon: Calendar
-          }, {
-            step: 2,
-            title: "AI Scrapes Live Prices",
-            description: "Our AI searches the web for current prices from hotels, trains, flights, and activities in real-time.",
-            icon: Brain
-          }, {
-            step: 3,
-            title: "Get Your Budget-Perfect Plan",
-            description: "Receive a detailed itinerary with accurate costs that never exceed your specified budget range.",
-            icon: CheckCircle
-          }].map((step, idx) => <div key={idx} className="text-center relative">
-                {idx < 2 && <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-purple-300 to-blue-300 transform translate-x-4"></div>}
+            {[
+              {
+                step: 1,
+                title: "Set Your Budget & Preferences",
+                description: "Enter your destination, dates, and budget range. Our AI will respect your budget limits strictly.",
+                icon: Calendar
+              },
+              {
+                step: 2,
+                title: "AI Scrapes Live Prices",
+                description: "Our AI searches the web for current prices from hotels, trains, flights, and activities in real-time.",
+                icon: Brain
+              },
+              {
+                step: 3,
+                title: "Get Your Budget-Perfect Plan",
+                description: "Receive a detailed itinerary with accurate costs that never exceed your specified budget range.",
+                icon: CheckCircle
+              }
+            ].map((step, idx) => (
+              <div key={idx} className="text-center relative">
+                {idx < 2 && (
+                  <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-purple-300 to-blue-300 transform translate-x-4"></div>
+                )}
                 <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <span className="text-2xl font-bold text-white">{step.step}</span>
                 </div>
@@ -180,7 +204,8 @@ const Index = () => {
                   <h3 className="text-xl font-bold text-gray-900 mb-4">{step.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{step.description}</p>
                 </div>
-              </div>)}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -245,6 +270,8 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
