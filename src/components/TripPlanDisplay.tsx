@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Users, DollarSign, Clock, Utensils, Camera, Info } from 'lucide-react';
+import { MapPin, Calendar, Users, DollarSign, Clock, Utensils, Camera, Info, Home } from 'lucide-react';
 import { formatINR } from '@/lib/currency';
-import type { TripPlan } from '@/integrations/supabase/types';
+import type { TripPlan, BudgetItem } from '@/integrations/supabase/types';
 
 interface TripPlanDisplayProps {
   plan: TripPlan;
@@ -159,15 +160,18 @@ const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan }) => {
                 </tr>
               </thead>
               <tbody>
-                {plan.budgetBreakdown && Object.entries(plan.budgetBreakdown).map(([category, details]) => (
-                  <tr key={category} className="border-b hover:bg-gray-50">
-                    <td className="p-2 font-medium capitalize">{category.replace(/([A-Z])/g, ' $1')}</td>
-                    <td className="p-2 text-right font-medium text-green-600">
-                      {formatINR(details?.estimated)}
-                    </td>
-                    <td className="p-2 text-sm text-gray-600">{details?.notes || 'No notes available'}</td>
-                  </tr>
-                ))}
+                {plan.budgetBreakdown && Object.entries(plan.budgetBreakdown).map(([category, details]) => {
+                  const budgetItem = details as BudgetItem;
+                  return (
+                    <tr key={category} className="border-b hover:bg-gray-50">
+                      <td className="p-2 font-medium capitalize">{category.replace(/([A-Z])/g, ' $1')}</td>
+                      <td className="p-2 text-right font-medium text-green-600">
+                        {formatINR(budgetItem?.estimated || 0)}
+                      </td>
+                      <td className="p-2 text-sm text-gray-600">{budgetItem?.notes || 'No notes available'}</td>
+                    </tr>
+                  );
+                })}
                 <tr className="border-b-2 border-gray-300 bg-gray-50 font-semibold">
                   <td className="p-2">Total Estimated Cost</td>
                   <td className="p-2 text-right text-green-700">
@@ -286,4 +290,3 @@ const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({ plan }) => {
 };
 
 export default TripPlanDisplay;
-import { Home } from "lucide-react";
