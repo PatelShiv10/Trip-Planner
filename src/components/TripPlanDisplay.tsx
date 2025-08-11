@@ -4,62 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Users, DollarSign, Clock, Utensils, Camera, Info, Home } from 'lucide-react';
 import { formatINR } from '@/lib/currency';
-
-// Define types locally since they're not available in the read-only types file
-interface BudgetItem {
-  estimated: number;
-  notes?: string;
-}
-
-interface DailyActivity {
-  time: string;
-  activity: string;
-  location: string;
-  category: string;
-  estimatedCost: number;
-}
-
-interface DailyItinerary {
-  day: number;
-  title: string;
-  date: string;
-  activities: DailyActivity[];
-}
-
-interface Transportation {
-  gettingThere: string;
-  localTransport: {
-    modes: string[];
-    dailyCost: number;
-  };
-}
-
-interface FoodRecommendation {
-  name: string;
-  type: string;
-  description: string;
-  estimatedCost: number;
-}
-
-interface HiddenGem {
-  name: string;
-  description: string;
-  location: string;
-}
-
-interface TripPlan {
-  summary: string;
-  totalEstimatedCost: number;
-  dailyItinerary: DailyItinerary[];
-  budgetBreakdown: {
-    [category: string]: BudgetItem;
-  };
-  transportation?: Transportation;
-  accommodation?: string;
-  foodRecommendations?: FoodRecommendation[];
-  travelTips?: string[];
-  hiddenGems?: HiddenGem[];
-}
+import type { TripPlan, BudgetItem } from '@/integrations/supabase/types';
 
 interface TripPlanDisplayProps {
   plan: TripPlan;

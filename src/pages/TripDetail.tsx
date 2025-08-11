@@ -1,6 +1,6 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -13,68 +13,247 @@ import {
   Calendar, 
   Users, 
   DollarSign, 
-  Edit,
+  Edit, 
+  Trash2, 
   ArrowLeft,
-  FileText,
+  Sparkles,
+  Plus,
   Receipt,
-  Trash2
+  Download,
+  MessageCircle
 } from 'lucide-react';
+import { TripPlanChat } from '@/components/TripPlanChat';
 import { formatINR } from '@/lib/currency';
-import type { Database } from '@/integrations/supabase/types';
-type Expense = Database['public']['Tables']['expenses']['Row'];
 
-interface TripDetails {
+interface Trip {
+  id: string;
   title: string;
   destination: string;
+  current_location: string;
   start_date: string;
   end_date: string;
   number_of_people: number;
   budget_range: string;
+  interests: string;
+  status: string;
+  ai_generated_plan: string;
+  created_at: string;
+}
+
+interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  currency: string;
+  date: string;
 }
 
 const TripDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { generatePDF, isGenerating } = usePDFGeneration();
+  const { generatePDF } = usePDFGeneration();
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [parsedPlan, setParsedPlan] = useState<any>(null);
+  const [showChat, setShowChat] = useState(false);
 
-  const { data: trip, isLoading: tripLoading, error: tripError } = useQuery({
-    queryKey: ['trip', id],
-    queryFn: async () => {
-      if (!id) throw new Error('Trip ID is required');
-      
-      const { data, error } = await supabase
+  useEffect(() => {
+    if (!id || !user) return;
+    fetchTripData();
+  }, [id, user]);
+
+  const fetchTripData = async () => {
+    try {
+      // Fetch trip details
+      const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
+      if (tripError) throw tripError;
+      setTrip(tripData);
 
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
-    queryKey: ['expenses', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
+      // Parse AI plan if it exists
+      if (tripData.ai_generated_plan) {
+        try {
+          const plan = typeof tripData.ai_generated_plan === 'string' 
+            ? JSON.parse(tripData.ai_generated_plan) 
+            : tripData.ai_generated_plan;
+          setParsedPlan(plan);
+        } catch (parseError) {
+          // If parsing fails, treat as plain text
+          setParsedPlan({
+            summary: `Trip to ${tripData.destination}`,
+            plainText: tripData.ai_generated_plan,
+            dailyItinerary: [],
+            budgetBreakdown: {},
+            transportation: { gettingThere: "", localTransport: "" },
+            accommodation: "",
+            foodRecommendations: [],
+            travelTips: [],
+            hiddenGems: []
+          });
+        }
+      }
+
+      // Fetch trip expenses
+      const { data: expenseData, error: expenseError } = await supabase
         .from('expenses')
         .select('*')
         .eq('trip_id', id)
         .order('date', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
+      if (expenseError) throw expenseError;
+      setExpenses(expenseData || []);
+    } catch (error) {
+      console.error('Error fetching trip data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load trip details",
+        variant: "destructive"
+      });
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleDeleteTrip = async () => {
-    if (!id) return;
+  const generateAIPlan = async () => {
+    if (!trip) return;
     
+    setGeneratingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-trip-plan', {
+        body: {
+          trip: {
+            destination: trip.destination,
+            current_location: trip.current_location,
+            start_date: trip.start_date,
+            end_date: trip.end_date,
+            number_of_people: trip.number_of_people,
+            budget_range: trip.budget_range,
+            interests: trip.interests
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      const planToStore = typeof data.plan === 'object' ? JSON.stringify(data.plan) : data.plan;
+
+      // Update trip with generated plan
+      const { error: updateError } = await supabase
+        .from('trips')
+        .update({ ai_generated_plan: planToStore })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      setTrip(prev => prev ? { ...prev, ai_generated_plan: planToStore } : null);
+      setParsedPlan(data.plan);
+      
+      toast({
+        title: "Success!",
+        description: "AI trip plan generated successfully"
+      });
+    } catch (error) {
+      console.error('Error generating AI plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate AI trip plan",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingPlan(false);
+    }
+  };
+
+  const handlePlanUpdate = (updatedPlan: any) => {
+    setParsedPlan(updatedPlan);
+    setTrip(prev => prev ? { ...prev, ai_generated_plan: JSON.stringify(updatedPlan) } : null);
+  };
+
+  const markAsCompleted = async () => {
+    if (!trip || !confirm('Mark this trip as completed?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTrip(prev => prev ? { ...prev, status: 'completed' } : null);
+      toast({
+        title: "Trip completed!",
+        description: "Your trip has been marked as completed"
+      });
+    } catch (error) {
+      console.error('Error updating trip status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update trip status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const markAsActive = async () => {
+    if (!trip) return;
+
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'active' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTrip(prev => prev ? { ...prev, status: 'active' } : null);
+      toast({
+        title: "Trip activated!",
+        description: "Your trip has been marked as active"
+      });
+    } catch (error) {
+      console.error('Error updating trip status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update trip status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!trip || !parsedPlan) {
+      toast({
+        title: "No Plan Available",
+        description: "Please generate a trip plan first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await generatePDF({
+      title: trip.title,
+      destination: trip.destination,
+      start_date: trip.start_date,
+      end_date: trip.end_date,
+      number_of_people: trip.number_of_people,
+      budget_range: trip.budget_range
+    });
+  };
+
+  const deleteTrip = async () => {
+    if (!trip || !confirm('Are you sure you want to delete this trip?')) return;
+
     try {
       const { error } = await supabase
         .from('trips')
@@ -82,201 +261,304 @@ const TripDetail = () => {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       toast({
         title: "Trip deleted",
-        description: "Your trip has been deleted successfully.",
+        description: "Your trip has been deleted successfully"
       });
-      
       navigate('/dashboard');
     } catch (error) {
       console.error('Error deleting trip:', error);
       toast({
         title: "Error",
-        description: "Failed to delete trip. Please try again.",
-        variant: "destructive",
+        description: "Failed to delete trip",
+        variant: "destructive"
       });
     }
   };
 
-  const handleGeneratePDF = async () => {
-    if (!trip) return;
-    
-    const tripDetails = {
-      title: trip.title,
-      destination: trip.destination,
-      start_date: trip.start_date,
-      end_date: trip.end_date,
-      number_of_people: trip.number_of_people,
-      budget_range: trip.budget_range,
-    };
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-    await generatePDF(trip.ai_generated_plan, expenses, tripDetails);
-  };
-
-  if (tripLoading || expensesLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-48 bg-gray-200 rounded"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Trip not found</h2>
+          <Link to="/dashboard">
+            <Button>Return to Dashboard</Button>
+          </Link>
         </div>
       </div>
     );
   }
 
-  if (tripError || !trip) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle className="text-red-600">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              {tripError?.message || 'Trip not found'}
-            </p>
-            <Button onClick={() => navigate('/dashboard')} variant="outline">
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-4">
+          <Link to="/dashboard">
+            <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  let parsedPlan = null;
-  try {
-    parsedPlan = trip.ai_generated_plan ? JSON.parse(trip.ai_generated_plan) : null;
-  } catch (error) {
-    console.error('Error parsing trip plan:', error);
-  }
-
-  const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Button 
-            onClick={() => navigate('/dashboard')} 
-            variant="outline"
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleGeneratePDF}
-              disabled={isGenerating}
-              variant="outline"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {isGenerating ? 'Generating PDF...' : 'Generate PDF'}
-            </Button>
-            <Button 
-              onClick={() => navigate(`/trip/${id}/expenses`)}
-              variant="outline"
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Manage Expenses
-            </Button>
-            <Button 
-              onClick={() => navigate(`/trip/${id}/edit`)}
-              variant="outline"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Trip
-            </Button>
-            <Button 
-              onClick={handleDeleteTrip}
-              variant="destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Trip
-            </Button>
-          </div>
-        </div>
-
-        {/* Trip Header */}
-        <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl mb-2">{trip.title}</CardTitle>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{trip.destination}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {new Date(trip.start_date).toLocaleDateString()} - {new Date(trip.end_date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>{trip.number_of_people} {trip.number_of_people === 1 ? 'person' : 'people'}</span>
-                  </div>
-                </div>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{trip.title}</h1>
+            <div className="flex items-center space-x-4 mt-2 text-gray-600">
+              <div className="flex items-center space-x-1">
+                <MapPin className="h-4 w-4" />
+                <span>{trip.destination}</span>
               </div>
-              <Badge variant="secondary" className="text-gray-800">
+              <Badge variant={trip.status === 'completed' ? 'default' : 'secondary'}>
                 {trip.status}
               </Badge>
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          {parsedPlan && (
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
+          {trip?.status === 'planned' && (
+            <Button variant="outline" size="sm" onClick={markAsActive}>
+              Start Trip
+            </Button>
+          )}
+          {trip?.status === 'active' && (
+            <Button variant="outline" size="sm" onClick={markAsCompleted}>
+              Mark Complete
+            </Button>
+          )}
+          <Link to={`/trip/${id}/edit`}>
+            <Button variant="outline" size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Trip
+            </Button>
+          </Link>
+          <Button variant="destructive" size="sm" onClick={deleteTrip}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
+      </div>
 
-        {/* Budget Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Trip Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Info Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Budget Range
-              </CardTitle>
+              <CardTitle>Trip Details</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">{trip.budget_range}</p>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Start Date</p>
+                    <p className="font-medium">{new Date(trip.start_date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">End Date</p>
+                    <p className="font-medium">{new Date(trip.end_date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">People</p>
+                    <p className="font-medium">{trip.number_of_people}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Budget</p>
+                    <p className="font-medium">{trip.budget_range}</p>
+                  </div>
+                </div>
+              </div>
+              {trip.interests && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Interests</p>
+                  <p className="text-gray-900">{trip.interests}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
-          
+
+          {/* AI Generated Plan */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                Total Expenses
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <span>AI Trip Plan</span>
               </CardTitle>
+              <div className="flex space-x-2">
+                {parsedPlan && (
+                  <>
+                    <Button 
+                      onClick={() => setShowChat(!showChat)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {showChat ? 'Hide Chat' : 'Modify Plan'}
+                    </Button>
+                    <Button 
+                      onClick={handleDownloadPDF} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                  </>
+                )}
+                <Button 
+                  onClick={generateAIPlan} 
+                  disabled={generatingPlan}
+                  size="sm"
+                >
+                  {generatingPlan ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {parsedPlan ? 'Regenerate Plan' : 'Generate Plan'}
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-blue-600">{formatINR(totalExpenses)}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'} recorded
-              </p>
+              {parsedPlan ? (
+                <>
+                  {showChat && (
+                    <div className="mb-6">
+                      <TripPlanChat 
+                        tripId={id!}
+                        currentPlan={parsedPlan}
+                        onPlanUpdate={handlePlanUpdate}
+                      />
+                    </div>
+                  )}
+                  <TripPlanDisplay 
+                    plan={parsedPlan} 
+                    expenses={expenses}
+                    tripDetails={{
+                      title: trip.title,
+                      destination: trip.destination,
+                      start_date: trip.start_date,
+                      end_date: trip.end_date,
+                      number_of_people: trip.number_of_people,
+                      budget_range: trip.budget_range
+                    }}
+                  />
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Sparkles className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No AI plan generated yet</p>
+                  <p className="text-sm">Click "Generate Plan" to create an AI-powered itinerary</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* AI Generated Plan */}
-        {parsedPlan ? (
-          <TripPlanDisplay plan={parsedPlan} />
-        ) : (
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Expenses Summary */}
           <Card>
-            <CardHeader>
-              <CardTitle>Trip Plan</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <Receipt className="h-5 w-5 text-purple-600" />
+                <span>Expenses</span>
+              </CardTitle>
+              <Link to={`/trip/${id}/expenses`}>
+                <Button size="sm" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">No AI-generated plan available for this trip.</p>
+              <div className="text-center mb-4">
+                <div className="text-2xl font-bold text-gray-900">
+                  {formatINR(totalExpenses)}
+                </div>
+                <p className="text-sm text-gray-600">Total Spent</p>
+              </div>
+              
+              {expenses.length > 0 ? (
+                <div className="space-y-2">
+                  {expenses.slice(0, 5).map((expense) => (
+                    <div key={expense.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                      <div>
+                        <p className="font-medium text-sm">{expense.description}</p>
+                        <p className="text-xs text-gray-600">{expense.category}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">{formatINR(expense.amount)}</p>
+                        <p className="text-xs text-gray-600">{new Date(expense.date).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {expenses.length > 5 && (
+                    <Link to={`/trip/${id}/expenses`} className="block text-center text-sm text-purple-600 hover:text-purple-700 py-2">
+                      View all {expenses.length} expenses
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <Receipt className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No expenses yet</p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link to={`/trip/${id}/expenses`} className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Manage Expenses
+                </Button>
+              </Link>
+              <Link to={`/trip/${id}/edit`} className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Trip Details
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
